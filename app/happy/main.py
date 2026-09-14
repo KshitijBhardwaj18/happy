@@ -11,6 +11,7 @@ Two payload shapes:
 from __future__ import annotations
 
 import asyncio
+import json
 import logging
 from typing import Any
 
@@ -84,6 +85,15 @@ async def _run_mode_tracked(mode: str, args: dict) -> None:
 async def invoke(payload: dict, context: Any) -> dict:
     log.info("Happy invoked with payload keys=%s", list(payload) if isinstance(payload, dict) else type(payload))
 
+    # `agentcore invoke '{"mode": "patrol"}'` arrives as {"prompt": "{\"mode\": \"patrol\"}"}; unwrap it.
+    if isinstance(payload, dict) and isinstance(payload.get("prompt"), str) and payload["prompt"].lstrip().startswith("{"):
+        try:
+            inner = json.loads(payload["prompt"])
+            if isinstance(inner, dict) and inner.get("mode"):
+                payload = inner
+        except ValueError:
+            pass
+
     if isinstance(payload, dict) and payload.get("mode"):
         mode = payload["mode"]
         if mode not in _RUNNER_MODES:
@@ -94,9 +104,13 @@ async def invoke(payload: dict, context: Any) -> dict:
 
     if isinstance(payload, dict) and "prompt" in payload:
         session_id = getattr(context, "session_id", None) or "adhoc"
-        agent = build_happy("patrol", session_id)
-        result = agent(payload["prompt"])
-        return {"result": str(result)}
+        try:
+            agent = build_happy("patrol", session_id)
+            result = await asyncio.to_thread(agent, payload["prompt"])
+            return {"result": str(result)}
+        except Exception as exc:  # noqa: BLE001
+            log.exception("ad-hoc prompt failed")
+            return {"status": "error", "error": str(exc)[:400]}
 
     return {"status": "error", "error": "payload must include 'mode' or 'prompt'"}
 
