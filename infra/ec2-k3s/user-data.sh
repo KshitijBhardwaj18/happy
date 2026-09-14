@@ -53,7 +53,12 @@ done
 kubectl get nodes || true
 
 # --- 5. Apply the shop app manifests -----------------------------------------
+# namespace.yaml first: `kubectl apply -f <dir>` applies files in
+# alphabetical order, and "namespace.yaml" sorts after "app-configmap.yaml"
+# etc, so applying the whole directory in one shot fails with "namespaces
+# shop not found" on a fresh cluster.
 echo "happy user-data: applying /opt/happy/k8s manifests"
+kubectl apply -f /opt/happy/k8s/namespace.yaml
 kubectl apply -f /opt/happy/k8s
 
 echo "happy user-data: done at $(date -u +%Y-%m-%dT%H:%M:%SZ)"
