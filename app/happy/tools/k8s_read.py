@@ -28,7 +28,14 @@ def _clients() -> tuple[k8s_client.CoreV1Api, k8s_client.AppsV1Api]:
     `kubernetes.config.load_kube_config`, and returns `(CoreV1Api, AppsV1Api)`.
     """
     settings = load_settings()
-    raw = base64.b64decode(settings.kubeconfig_b64)
+    if settings.kubeconfig_b64:
+        raw = base64.b64decode(settings.kubeconfig_b64)
+    else:
+        # On AgentCore Runtime the kubeconfig lives in SSM (same parameter the Gateway Lambda uses).
+        import boto3
+
+        ssm = boto3.client("ssm", region_name=settings.aws_region)
+        raw = ssm.get_parameter(Name=settings.kubeconfig_ssm_param, WithDecryption=True)["Parameter"]["Value"].encode()
     with tempfile.NamedTemporaryFile(mode="wb", suffix=".yaml", delete=False) as handle:
         handle.write(raw)
         path = handle.name

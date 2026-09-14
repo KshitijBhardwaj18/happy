@@ -1,0 +1,10 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {"Sid": "ReadKubeconfig", "Effect": "Allow", "Action": ["ssm:GetParameter"], "Resource": "arn:aws:ssm:us-east-1:575751781540:parameter/happy/*"},
+    {"Sid": "CodeInterpreter", "Effect": "Allow", "Action": ["bedrock-agentcore:CreateCodeInterpreter", "bedrock-agentcore:StartCodeInterpreterSession", "bedrock-agentcore:InvokeCodeInterpreter", "bedrock-agentcore:StopCodeInterpreterSession", "bedrock-agentcore:GetCodeInterpreter", "bedrock-agentcore:GetCodeInterpreterSession", "bedrock-agentcore:ListCodeInterpreterSessions", "bedrock-agentcore:ListCodeInterpreters", "bedrock-agentcore:DeleteCodeInterpreter"], "Resource": "*"},
+    {"Sid": "Identity", "Effect": "Allow", "Action": ["bedrock-agentcore:GetResourceApiKey", "bedrock-agentcore:GetWorkloadAccessToken", "bedrock-agentcore:GetWorkloadAccessTokenForJWT", "bedrock-agentcore:GetWorkloadAccessTokenForUserId"], "Resource": "*"},
+    {"Sid": "Memory", "Effect": "Allow", "Action": ["bedrock-agentcore:CreateEvent", "bedrock-agentcore:ListEvents", "bedrock-agentcore:GetEvent", "bedrock-agentcore:RetrieveMemoryRecords", "bedrock-agentcore:ListMemoryRecords", "bedrock-agentcore:GetMemoryRecord", "bedrock-agentcore:ListSessions", "bedrock-agentcore:ListActors", "bedrock-agentcore:DeleteEvent"], "Resource": "*"},
+    {"Sid": "Bedrock", "Effect": "Allow", "Action": ["bedrock:InvokeModel", "bedrock:InvokeModelWithResponseStream"], "Resource": "*"}
+  ]
+}

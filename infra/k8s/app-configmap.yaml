@@ -13,6 +13,7 @@ data:
 
       SERVICE_NAME    name reported in JSON and log lines (default "app")
       LEAK_MB         allocate this many MB (1 MB every 100ms, held forever)
+      CACHE_PREWARM_MB same as LEAK_MB, under a feature-flag name
       CRASH_ON_START  "true" -> log an error and exit(1) after 2s
       ERROR_RATE      0..1 fraction of "/" requests that return 500
       LATENCY_MS      extra latency added to every request
@@ -114,7 +115,8 @@ data:
             threading.Thread(target=crash_on_start, daemon=True).start()
 
         try:
-            leak_mb = int(os.environ.get("LEAK_MB", "0") or "0")
+            # CACHE_PREWARM_MB is the "feature" name; it pre-allocates that many MB and holds them.
+            leak_mb = int(os.environ.get("LEAK_MB", "0") or os.environ.get("CACHE_PREWARM_MB", "0") or "0")
         except ValueError:
             leak_mb = 0
         if leak_mb > 0:

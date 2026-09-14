@@ -45,7 +45,10 @@
       "lifecycleConfiguration": {
         "idleRuntimeSessionTimeout": 1800,
         "maxLifetime": 7200
-      }
+      },
+      "additionalPolicies": [
+        "iam/runtime-extra.json"
+      ]
     }
   ],
   "memories": [

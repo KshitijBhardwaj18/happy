@@ -35,6 +35,7 @@ class Settings(BaseSettings):
 
     # Cluster
     kubeconfig_b64: str = Field(default="", alias="KUBECONFIG_B64")
+    kubeconfig_ssm_param: str = Field(default="/happy/kubeconfig", alias="HAPPY_KUBECONFIG_PARAM")
     watch_namespaces: list[str] = Field(default=["shop"], alias="HAPPY_WATCH_NAMESPACES")
 
     # Slack
@@ -66,7 +67,7 @@ class Settings(BaseSettings):
 
     @property
     def has_cluster(self) -> bool:
-        return bool(self.kubeconfig_b64)
+        return bool(self.kubeconfig_b64 or self.kubeconfig_ssm_param)
 
     @property
     def has_slack(self) -> bool:
