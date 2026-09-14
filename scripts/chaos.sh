@@ -81,6 +81,7 @@ case "$cmd" in
       kube set image "deployment/$svc" -n "$NAMESPACE" "$svc=python:3.12-slim" >/dev/null 2>&1 || true
     done
     echo "chaos.sh: re-applying infra/k8s manifests"
+    kube apply -f "$K8S_DIR/namespace.yaml"
     kube apply -f "$K8S_DIR"
     ;;
   -h|--help|help|"")
