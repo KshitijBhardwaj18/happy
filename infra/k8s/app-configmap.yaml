@@ -1,0 +1,129 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: shop-app
+  namespace: shop
+data:
+  app.py: |
+    """Stdlib-only demo HTTP service for the Happy shop cluster.
+
+    Serves GET / (JSON {service, ok}) and GET /healthz. Behavior is driven
+    entirely by environment variables so chaos.sh can flip failure modes
+    without rebuilding an image:
+
+      SERVICE_NAME    name reported in JSON and log lines (default "app")
+      LEAK_MB         allocate this many MB (1 MB every 100ms, held forever)
+      CRASH_ON_START  "true" -> log an error and exit(1) after 2s
+      ERROR_RATE      0..1 fraction of "/" requests that return 500
+      LATENCY_MS      extra latency added to every request
+    """
+
+    import datetime
+    import http.server
+    import json
+    import os
+    import random
+    import string
+    import sys
+    import threading
+    import time
+
+    SERVICE = os.environ.get("SERVICE_NAME", "app")
+    PORT = 8080
+
+
+    def log(level, message):
+        ts = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+        print(f"{ts} {level} {SERVICE}: {message}", flush=True)
+
+
+    def leak_memory(leak_mb):
+        log("WARN", f"leak simulation starting target={leak_mb}MB")
+        chunks = []
+        held_mb = 0
+        while held_mb < leak_mb:
+            # os.urandom forces real page faults so the OS actually commits
+            # this memory instead of leaving lazily-zeroed pages uncounted.
+            chunks.append(bytearray(os.urandom(1024 * 1024)))
+            held_mb += 1
+            time.sleep(0.1)
+        log("WARN", f"leak simulation holding {held_mb}MB")
+        while True:
+            time.sleep(3600)
+
+
+    def crash_on_start():
+        time.sleep(2)
+        log("ERROR", "simulated crash on start (CRASH_ON_START=true)")
+        sys.exit(1)
+
+
+    class Handler(http.server.BaseHTTPRequestHandler):
+        server_version = "HappyDemo/1.0"
+
+        def log_message(self, fmt, *args):
+            # Silence default stderr access logging; we log our own lines.
+            pass
+
+        def _sleep_for_latency(self):
+            try:
+                latency_ms = int(os.environ.get("LATENCY_MS", "0") or "0")
+            except ValueError:
+                latency_ms = 0
+            if latency_ms > 0:
+                time.sleep(latency_ms / 1000.0)
+
+        def _write_json(self, status, payload):
+            body = json.dumps(payload).encode("utf-8")
+            self.send_response(status)
+            self.send_header("Content-Type", "application/json")
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+
+        def do_GET(self):
+            self._sleep_for_latency()
+
+            if self.path == "/healthz":
+                self._write_json(200, {"ok": True})
+                return
+
+            if self.path == "/":
+                try:
+                    error_rate = float(os.environ.get("ERROR_RATE", "0") or "0")
+                except ValueError:
+                    error_rate = 0.0
+                if error_rate > 0 and random.random() < error_rate:
+                    order_id = "".join(random.choices(string.hexdigits.lower(), k=8))
+                    log("ERROR", f"payment gateway timeout order={order_id}")
+                    self._write_json(500, {"service": SERVICE, "ok": False})
+                    return
+                self._write_json(200, {"service": SERVICE, "ok": True})
+                return
+
+            self._write_json(404, {"service": SERVICE, "ok": False, "error": "not found"})
+
+        def do_HEAD(self):
+            self.do_GET()
+
+
+    def main():
+        log("INFO", f"starting service on port {PORT}")
+
+        if os.environ.get("CRASH_ON_START", "").strip().lower() == "true":
+            threading.Thread(target=crash_on_start, daemon=True).start()
+
+        try:
+            leak_mb = int(os.environ.get("LEAK_MB", "0") or "0")
+        except ValueError:
+            leak_mb = 0
+        if leak_mb > 0:
+            threading.Thread(target=leak_memory, args=(leak_mb,), daemon=True).start()
+
+        httpd = http.server.ThreadingHTTPServer(("0.0.0.0", PORT), Handler)
+        log("INFO", "ready")
+        httpd.serve_forever()
+
+
+    if __name__ == "__main__":
+        main()
