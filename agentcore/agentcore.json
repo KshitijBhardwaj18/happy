@@ -15,7 +15,25 @@
       "codeLocation": "app/happy/",
       "runtimeVersion": "PYTHON_3_12",
       "networkMode": "PUBLIC",
-      "protocol": "HTTP"
+      "protocol": "HTTP",
+      "envVars": [
+        {
+          "name": "HAPPY_WATCH_NAMESPACES",
+          "value": "[\"shop\"]"
+        },
+        {
+          "name": "HAPPY_ACTOR_ID",
+          "value": "sre-team"
+        },
+        {
+          "name": "GITHUB_REPO",
+          "value": "KshitijBhardwaj18/happy"
+        }
+      ],
+      "lifecycleConfiguration": {
+        "idleRuntimeSessionTimeout": 1800,
+        "maxLifetime": 7200
+      }
     }
   ],
   "memories": [
@@ -57,8 +75,160 @@
   "credentials": [],
   "evaluators": [],
   "onlineEvalConfigs": [],
-  "agentCoreGateways": [],
-  "policyEngines": [],
+  "agentCoreGateways": [
+    {
+      "name": "HappyHands",
+      "protocolType": "MCP",
+      "description": "Happy's hands: cluster writes as governed MCP tools",
+      "authorizerType": "NONE",
+      "enableSemanticSearch": false,
+      "exceptionLevel": "DEBUG",
+      "policyEngineConfiguration": {
+        "policyEngineName": "HappyPolicy",
+        "mode": "ENFORCE"
+      },
+      "targets": [
+        {
+          "name": "Hands",
+          "targetType": "lambda",
+          "toolDefinitions": [
+            {
+              "name": "rollout_restart",
+              "description": "Restart every pod of a Kubernetes deployment by rolling it (kubectl rollout restart). SAFE tier: fixes stuck or crash-looping pods without changing configuration.",
+              "inputSchema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "description": "Deployment name"
+                  },
+                  "namespace": {
+                    "type": "string",
+                    "description": "Namespace, default shop"
+                  }
+                },
+                "required": [
+                  "name"
+                ]
+              }
+            },
+            {
+              "name": "scale_deployment",
+              "description": "Set the replica count of a deployment. SAFE up to 5 replicas; policy forbids larger values.",
+              "inputSchema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string"
+                  },
+                  "replicas": {
+                    "type": "integer",
+                    "description": "Desired replicas"
+                  },
+                  "namespace": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "name",
+                  "replicas"
+                ]
+              }
+            },
+            {
+              "name": "rollback_deployment",
+              "description": "Roll a deployment back to its previous revision (or a given revision). APPROVAL tier: only call after a human approved it.",
+              "inputSchema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string"
+                  },
+                  "namespace": {
+                    "type": "string"
+                  },
+                  "revision": {
+                    "type": "integer",
+                    "description": "Optional target revision; default previous"
+                  }
+                },
+                "required": [
+                  "name"
+                ]
+              }
+            },
+            {
+              "name": "set_image",
+              "description": "Change the container image of a deployment. APPROVAL tier: only call after a human approved it.",
+              "inputSchema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string"
+                  },
+                  "image": {
+                    "type": "string"
+                  },
+                  "namespace": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "name",
+                  "image"
+                ]
+              }
+            },
+            {
+              "name": "delete_namespace",
+              "description": "Delete an entire namespace and everything in it. FORBIDDEN: policy blocks this; it exists to prove the block.",
+              "inputSchema": {
+                "type": "object",
+                "properties": {
+                  "namespace": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "namespace"
+                ]
+              }
+            }
+          ],
+          "compute": {
+            "host": "Lambda",
+            "implementation": {
+              "language": "Python",
+              "path": "app/hands",
+              "handler": "handler.handler"
+            },
+            "pythonVersion": "PYTHON_3_12",
+            "timeout": 30,
+            "memorySize": 256,
+            "iamPolicy": {
+              "Version": "2012-10-17",
+              "Statement": [
+                {
+                  "Effect": "Allow",
+                  "Action": [
+                    "ssm:GetParameter"
+                  ],
+                  "Resource": "arn:aws:ssm:us-east-1:575751781540:parameter/happy/*"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "policyEngines": [
+    {
+      "name": "HappyPolicy",
+      "description": "Happy's trust ladder: forbid destructive tools, cap scaling",
+      "policies": []
+    }
+  ],
   "configBundles": [],
   "abTests": [],
   "harnesses": [],
