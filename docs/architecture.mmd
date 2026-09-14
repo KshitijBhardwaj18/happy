@@ -1,0 +1,36 @@
+flowchart LR
+    SCHED["EventBridge Scheduler<br/>rate(10 min) patrol<br/>cron daily digest"]
+
+    subgraph CORE["Amazon Bedrock AgentCore"]
+        RUNTIME["AgentCore Runtime<br/>Happy (Strands agent)<br/>Sonnet 4.6 orchestrator"]
+        GATEWAY["AgentCore Gateway<br/>HappyHands (MCP)"]
+        POLICY["AgentCore Policy<br/>HappyPolicy (Cedar)<br/>TrustLadder"]
+        MEMORY[("AgentCore Memory<br/>happyMemory<br/>semantic / preference /<br/>summary / episodic")]
+        CI["AgentCore Code<br/>Interpreter"]
+        EVAL["AgentCore Evaluations<br/>HappyQuality"]
+    end
+
+    LAMBDA["Lambda: happy-hands<br/>rollout_restart, scale,<br/>rollback, set_image,<br/>delete_namespace"]
+    K3S[("k3s API on EC2<br/>t3.medium, namespace shop<br/>frontend / checkout / inventory")]
+    GH["GitHub API<br/>commits, PRs,<br/>postmortem/runbook PRs"]
+    SLACK["Slack<br/>#happy-oncall<br/>digests, approvals, audit"]
+    CW["CloudWatch<br/>GenAI Observability traces"]
+
+    SCHED -->|"{'mode': 'patrol'|'digest'}"| RUNTIME
+
+    RUNTIME -->|reads: pods, logs, events| K3S
+    RUNTIME -->|"writes (MCP): restart / scale /\nrollback / set_image / delete"| GATEWAY
+    GATEWAY --> POLICY
+    POLICY -->|permit| LAMBDA
+    POLICY -.->|forbid delete_namespace| LAMBDA
+    LAMBDA --> K3S
+
+    RUNTIME -->|"token via Identity\n(env fallback today)"| GH
+    RUNTIME -->|"token via Identity\n(env fallback today)"| SLACK
+    RUNTIME --> CI
+    RUNTIME <--> MEMORY
+    RUNTIME --> CW
+    EVAL -.-> RUNTIME
+
+    classDef aws fill:#f2f2f2,stroke:#888,color:#111;
+    class SCHED,LAMBDA,K3S,GH,SLACK,CW aws;
