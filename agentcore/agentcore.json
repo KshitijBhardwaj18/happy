@@ -14,8 +14,6 @@
       "entrypoint": "main.py",
       "codeLocation": "app/happy/",
       "runtimeVersion": "PYTHON_3_12",
-      "networkMode": "PUBLIC",
-      "protocol": "HTTP",
       "envVars": [
         {
           "name": "HAPPY_WATCH_NAMESPACES",
@@ -28,8 +26,14 @@
         {
           "name": "GITHUB_REPO",
           "value": "KshitijBhardwaj18/happy"
+        },
+        {
+          "name": "HAPPY_GATEWAY_URL",
+          "value": "https://happy-happyhands-uacr1x3qd2.gateway.bedrock-agentcore.us-east-1.amazonaws.com/mcp"
         }
       ],
+      "networkMode": "PUBLIC",
+      "protocol": "HTTP",
       "lifecycleConfiguration": {
         "idleRuntimeSessionTimeout": 1800,
         "maxLifetime": 7200
@@ -80,13 +84,6 @@
       "name": "HappyHands",
       "protocolType": "MCP",
       "description": "Happy's hands: cluster writes as governed MCP tools",
-      "authorizerType": "NONE",
-      "enableSemanticSearch": false,
-      "exceptionLevel": "DEBUG",
-      "policyEngineConfiguration": {
-        "policyEngineName": "HappyPolicy",
-        "mode": "ENFORCE"
-      },
       "targets": [
         {
           "name": "Hands",
@@ -219,14 +216,31 @@
             }
           }
         }
-      ]
+      ],
+      "authorizerType": "NONE",
+      "enableSemanticSearch": false,
+      "exceptionLevel": "DEBUG",
+      "policyEngineConfiguration": {
+        "policyEngineName": "HappyPolicy",
+        "mode": "ENFORCE"
+      }
     }
   ],
   "policyEngines": [
     {
       "name": "HappyPolicy",
       "description": "Happy's trust ladder: forbid destructive tools, cap scaling",
-      "policies": []
+      "policies": [
+        {
+          "name": "TrustLadder",
+          "description": "Happy trust ladder: forbid delete_namespace, cap scale at 5, permit the rest",
+          "statement": "// Happy's trust ladder, enforced by AgentCore Policy at the Gateway (not by the model).\n// Action names are \"<Target>___<tool>\"; the resource is the deployed gateway ARN,\n// substituted by scripts/render_policy.sh after the first deploy.\n\n// Never, no matter what the model decides.\nforbid(principal,\n  action == AgentCore::Action::\"Hands___delete_namespace\",\n  resource == AgentCore::Gateway::\"arn:aws:bedrock-agentcore:us-east-1:575751781540:gateway/happy-happyhands-uacr1x3qd2\");\n\n// Scaling is safe only within a small band.\npermit(principal,\n  action == AgentCore::Action::\"Hands___scale_deployment\",\n  resource == AgentCore::Gateway::\"arn:aws:bedrock-agentcore:us-east-1:575751781540:gateway/happy-happyhands-uacr1x3qd2\")\nwhen { context.input.replicas <= 5 };\n\n// Safe and approval-gated actions are allowed at the gateway; the approval gate itself\n// lives in the agent (a Strands interrupt that waits for a human reply in Slack).\npermit(principal,\n  action in [AgentCore::Action::\"Hands___rollout_restart\",\n             AgentCore::Action::\"Hands___rollback_deployment\",\n             AgentCore::Action::\"Hands___set_image\"],\n  resource == AgentCore::Gateway::\"arn:aws:bedrock-agentcore:us-east-1:575751781540:gateway/happy-happyhands-uacr1x3qd2\");",
+          "sourceFile": "policies/happy.rendered.cedar",
+          "validationMode": "FAIL_ON_ANY_FINDINGS",
+          "enforcementMode": "ACTIVE",
+          "authorizationPhase": "INITIATE"
+        }
+      ]
     }
   ],
   "configBundles": [],
