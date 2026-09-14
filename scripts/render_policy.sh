@@ -7,7 +7,7 @@ mkdir -p policies/rendered
 for f in policies/0*.cedar; do
   name="$(basename "$f" .cedar)"
   sed "s#__GATEWAY_ARN__#${ARN}#g" "$f" > "policies/rendered/${name}.cedar"
-  pname="$(echo "$name" | sed -E 's/^[0-9]+-//; s/(^|-)([a-z])/\U\2/g')"
+  pname="$(python3 -c "import sys,re; print(''.join(w.capitalize() for w in re.sub(r'^[0-9]+-','',sys.argv[1]).split('-')))" "$name")"
   agentcore add policy --name "$pname" --engine HappyPolicy --source "policies/rendered/${name}.cedar" --description "Happy trust ladder: ${name}" >/dev/null 2>&1 || echo "policy ${pname} already present"
 done
 echo "rendered and registered $(ls policies/rendered | wc -l | tr -d ' ') policies for ${ARN}"
