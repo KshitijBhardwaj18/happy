@@ -30,11 +30,14 @@ _MAX_PATCH_FILES = 3
 def _github_token() -> str:
     """Resolve a GitHub token: settings, then `gh auth token`, else empty string."""
     settings = load_settings()
-    from identity import github_token as _identity_token
+    if settings.github_token:
+        return settings.github_token
+    if settings.use_identity:
+        from identity import resolve_api_key
 
-    token = _identity_token()
-    if token:
-        return token
+        token = resolve_api_key(settings.github_credential_name)
+        if token:
+            return token
     try:
         result = subprocess.run(
             ["gh", "auth", "token"],
