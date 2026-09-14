@@ -29,14 +29,38 @@
             }
           }
         },
+        "onlineEvalConfigs": {
+          "HappyQuality": {
+            "onlineEvaluationConfigId": "happy_HappyQuality-foqPQOH40a",
+            "onlineEvaluationConfigArn": "arn:aws:bedrock-agentcore:us-east-1:575751781540:online-evaluation-config/happy_HappyQuality-foqPQOH40a",
+            "agent": "happy"
+          }
+        },
         "policyEngines": {
           "HappyPolicy": {
             "policyEngineId": "happy_HappyPolicy-syh8p0jwsl",
             "policyEngineArn": "arn:aws:bedrock-agentcore:us-east-1:575751781540:policy-engine/happy_HappyPolicy-syh8p0jwsl"
           }
         },
+        "policies": {
+          "HappyPolicy/ForbidDeleteNamespace": {
+            "policyId": "ForbidDeleteNamespace-35ekqjwcvf",
+            "policyArn": "arn:aws:bedrock-agentcore:us-east-1:575751781540:policy-engine/happy_HappyPolicy-syh8p0jwsl/policy/ForbidDeleteNamespace-35ekqjwcvf",
+            "engineName": "HappyPolicy"
+          },
+          "HappyPolicy/ScaleCap": {
+            "policyId": "ScaleCap-tjeljposr4",
+            "policyArn": "arn:aws:bedrock-agentcore:us-east-1:575751781540:policy-engine/happy_HappyPolicy-syh8p0jwsl/policy/ScaleCap-tjeljposr4",
+            "engineName": "HappyPolicy"
+          },
+          "HappyPolicy/PermitHands": {
+            "policyId": "PermitHands-8fjha4jm1d",
+            "policyArn": "arn:aws:bedrock-agentcore:us-east-1:575751781540:policy-engine/happy_HappyPolicy-syh8p0jwsl/policy/PermitHands-8fjha4jm1d",
+            "engineName": "HappyPolicy"
+          }
+        },
         "stackName": "AgentCore-happy-default",
-        "deployHash": "1ee91ebcb112f9cd"
+        "deployHash": "b919fc9d01a0c236"
       }
     }
   }
