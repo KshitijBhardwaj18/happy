@@ -1,70 +1,35 @@
-from typing import Any
-from collections import OrderedDict
-from strands import Agent, tool
+"""AgentCore Runtime entrypoint for Happy.
+
+Two payload shapes:
+  {"mode": "patrol" | "digest" | "handoff", "args": {...}}
+      EventBridge Scheduler's shape. Starts the matching runner as a tracked background
+      task and acks immediately (`{"status": "accepted", "mode": mode}`) so the
+      scheduler sees a fast response while the run continues in the background.
+  {"prompt": "..."}
+      An ad-hoc question, answered synchronously by the patrol agent.
+"""
+from __future__ import annotations
+
 import asyncio
-from strands.agent.conversation_manager.null_conversation_manager import NullConversationManager
+import logging
+from typing import Any
+
 from bedrock_agentcore.runtime import BedrockAgentCoreApp
-from model.load import load_model
-from mcp_client.client import get_streamable_http_mcp_client
-from memory.session import get_memory_session_manager
+
+from agent import build_happy
 
 app = BedrockAgentCoreApp()
 log = app.logger
 
-# Define a Streamable HTTP MCP Client
-mcp_clients = [get_streamable_http_mcp_client()]
-
-DEFAULT_SYSTEM_PROMPT = """
-You are a helpful assistant. Use tools when appropriate.
-
-"""
-
-
-# Define a collection of tools used by the model
-tools = []
-
-_INLINE_FUNCTION_NAMES = set()
-
-# Define a simple function tool
-@tool
-def add_numbers(a: int, b: int) -> int:
-    """Return the sum of two numbers"""
-    return a+b
-tools.append(add_numbers)
-
-
-
-# Add MCP client to tools if available
-for mcp_client in mcp_clients:
-    if mcp_client:
-        tools.append(mcp_client)
-
-
-def _make_conversation_manager():
-    return NullConversationManager()
-
-def agent_factory():
-    cache = {}
-    def get_or_create_agent(session_id, user_id):
-        _actor_id = user_id
-        key = f"{session_id}/{_actor_id}"
-        if key not in cache:
-            cache[key] = Agent(
-                model=load_model(),
-                session_manager=get_memory_session_manager(session_id, _actor_id),
-                conversation_manager=_make_conversation_manager(),
-                system_prompt=DEFAULT_SYSTEM_PROMPT,
-                tools=tools,
-                hooks=[
-                ],
-            )
-        return cache[key]
-    return get_or_create_agent
-get_or_create_agent = agent_factory()
+_RUNNER_MODES = {"patrol", "digest", "handoff"}
 
 
 def strip_trailing_tool_use(messages: Any) -> list[dict]:
-    """Strip toolUse blocks from the tail until the last message has none."""
+    """Strip toolUse blocks from the tail until the last message has none.
+
+    Carried over from the generated scaffold: harmless, cheap, and useful if Happy ever
+    needs to accept a raw `messages` payload shape again.
+    """
     if not isinstance(messages, list):
         raise ValueError("messages must be a list")
 
@@ -88,74 +53,52 @@ def strip_trailing_tool_use(messages: Any) -> list[dict]:
     return messages
 
 
-def _extract_prompt(payload: dict):
-    """Accept validated harness messages, tool results, or a plain prompt string."""
-    if not isinstance(payload, dict):
-        raise ValueError("payload must be a JSON object")
-    if "messages" in payload:
-        return strip_trailing_tool_use(payload["messages"])
-    if "tool_results" in payload:
-        tool_results = payload["tool_results"]
-        if not isinstance(tool_results, list) or not all(
-            isinstance(tool_result, dict) and isinstance(tool_result.get("toolUseId"), str)
-            for tool_result in tool_results
-        ):
-            raise ValueError("tool_results must contain objects with a toolUseId string")
-        return [{"role": "user", "content": [{"toolResult": {
-            "toolUseId": tr["toolUseId"],
-            "status": tr.get("status", "success"),
-            "content": tr.get("content", []),
-        }} for tr in tool_results]}]
-    prompt = payload.get("prompt", "")
-    if not isinstance(prompt, str):
-        raise ValueError("prompt must be a string")
-    return prompt
+def _run_mode_sync(mode: str, args: dict) -> dict:
+    """Run one of the runner functions synchronously (imported lazily so a bad import
+    in runner.py can't break entrypoint registration)."""
+    from runner import run_digest, run_handoff, run_patrol
+
+    if mode == "patrol":
+        return run_patrol(session_id=args.get("session_id"))
+    if mode == "digest":
+        return run_digest()
+    if mode == "handoff":
+        return run_handoff()
+    return {"status": "error", "error": f"unknown mode {mode!r}"}
 
 
-def _has_inline_function_call(messages) -> bool:
-    """Return True if messages contains an assistant toolUse for an inline function tool."""
-    if not _INLINE_FUNCTION_NAMES or not isinstance(messages, list):
-        return False
-    for msg in messages:
-        if msg.get("role") == "assistant":
-            for block in msg.get("content", []):
-                if isinstance(block, dict) and block.get("toolUse", {}).get("name") in _INLINE_FUNCTION_NAMES:
-                    return True
-    return False
-
-
-def _is_inline_function_call(event: dict) -> bool:
-    """Check if a contentBlockStart event is for an inline function tool."""
-    if not _INLINE_FUNCTION_NAMES:
-        return False
-    cbs = event.get("contentBlockStart", {})
-    start = cbs.get("start", {})
-    tool_use = start.get("toolUse") if isinstance(start, dict) else None
-    return tool_use is not None and tool_use.get("name") in _INLINE_FUNCTION_NAMES
-
+async def _run_mode_tracked(mode: str, args: dict) -> None:
+    """Run `mode` in a thread, as an AgentCore-tracked async task, so
+    `agentcore traces`/logs show the run even though the entrypoint already returned."""
+    task_id = app.add_async_task(mode)
+    try:
+        result = await asyncio.to_thread(_run_mode_sync, mode, args)
+        log.info("mode=%s completed result=%s", mode, result)
+    except Exception:
+        log.exception("mode=%s failed", mode)
+    finally:
+        app.complete_async_task(task_id)
 
 
 @app.entrypoint
-async def invoke(payload, context):
-    log.info("Invoking Agent.....")
+async def invoke(payload: dict, context: Any) -> dict:
+    log.info("Happy invoked with payload keys=%s", list(payload) if isinstance(payload, dict) else type(payload))
 
+    if isinstance(payload, dict) and payload.get("mode"):
+        mode = payload["mode"]
+        if mode not in _RUNNER_MODES:
+            return {"status": "error", "error": f"unknown mode {mode!r}"}
+        args = payload.get("args") or {}
+        asyncio.create_task(_run_mode_tracked(mode, args))
+        return {"status": "accepted", "mode": mode}
 
-    session_id = getattr(context, 'session_id', 'default-session')
-    user_id = getattr(context, 'user_id', 'default-user')
-    agent = get_or_create_agent(session_id, user_id)
+    if isinstance(payload, dict) and "prompt" in payload:
+        session_id = getattr(context, "session_id", None) or "adhoc"
+        agent = build_happy("patrol", session_id)
+        result = agent(payload["prompt"])
+        return {"result": str(result)}
 
-    prompt = _extract_prompt(payload)
-
-
-    async for event in agent.stream_async(
-        prompt,
-    ):
-        if not isinstance(event, dict) or "event" not in event:
-            continue
-        cbs = event["event"].get("contentBlockStart")
-        if cbs is not None and not cbs.get("start"):
-            continue
-        yield event
+    return {"status": "error", "error": "payload must include 'mode' or 'prompt'"}
 
 
 if __name__ == "__main__":
