@@ -234,8 +234,26 @@ def run_patrol(session_id: str | None = None) -> dict:
     )
     post_message(closing, thread_ts=thread_ts)
 
+    # Knowledge leaves the agent: postmortem PR now, runbook PR once a fix has worked twice.
+    pr_urls: dict[str, str] = {}
+    try:
+        from postmortem import run_postmortem, run_runbook
+
+        record = next((r for r in ledger.recent_incidents(days=3650) if r.id == record_id), None)
+        if record is not None and succeeded:
+            pm = run_postmortem(report, record, action_dict, succeeded, minutes, thread_ts, _read_audit_tail(80))
+            if pm.get("ok"):
+                pr_urls["postmortem"] = pm.get("url", "")
+            rb = run_runbook(record, [pm.get("path", "")] if pm.get("ok") else [])
+            if rb.get("ok"):
+                pr_urls["runbook"] = rb.get("url", "")
+                post_message(f"📘 Runbook drafted (this fix has now worked {len([o for o in record.outcomes if o.succeeded])} times): {rb.get('url')}", thread_ts=thread_ts)
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("postmortem/runbook step failed: %s", exc)
+
     return {
         "status": "handled",
+        "prs": pr_urls,
         "service": service,
         "namespace": namespace,
         "fingerprint_id": fp.id,
