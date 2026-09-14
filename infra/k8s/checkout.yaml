@@ -26,6 +26,9 @@ spec:
               value: "checkout"
             - name: LEAK_MB
               value: "0"
+            # Pre-warm the product cache on startup so first checkout is fast.
+            - name: CACHE_PREWARM_MB
+              value: "400"
             - name: CRASH_ON_START
               value: "false"
             - name: ERROR_RATE
