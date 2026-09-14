@@ -75,9 +75,9 @@ def investigate_stub(service: str, namespace: str, fp: Fingerprint) -> IncidentR
     return report
 
 
-def _investigate(service: str, namespace: str, fp: Fingerprint) -> IncidentReport:
+def _investigate(service: str, namespace: str, fp: Fingerprint, unhealthy: dict | None = None) -> IncidentReport:
     if _graph_investigate is not None:
-        return _graph_investigate(service, namespace, fp)
+        return _graph_investigate(service, namespace, fp, [unhealthy] if unhealthy else None)
     return investigate_stub(service, namespace, fp)
 
 
@@ -202,7 +202,7 @@ def run_patrol(session_id: str | None = None) -> dict:
     if recall.records:
         report = _known_fix_report(ledger, service, namespace, fp, recall.records[0])
     if report is None:
-        report = _investigate(service, namespace, fp)
+        report = _investigate(service, namespace, fp, unhealthy)
         if not report.fingerprint_id:
             report.fingerprint_id = fp.id
 
