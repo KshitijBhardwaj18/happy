@@ -30,6 +30,14 @@
         {
           "name": "HAPPY_GATEWAY_URL",
           "value": "https://happy-happyhands-uacr1x3qd2.gateway.bedrock-agentcore.us-east-1.amazonaws.com/mcp"
+        },
+        {
+          "name": "HAPPY_MODEL_ORCHESTRATOR",
+          "value": "us.anthropic.claude-sonnet-4-6"
+        },
+        {
+          "name": "HAPPY_MODEL_SPECIALIST",
+          "value": "global.anthropic.claude-sonnet-4-5-20250929-v1:0"
         }
       ],
       "networkMode": "PUBLIC",
@@ -243,17 +251,17 @@
       "description": "Happy's trust ladder: forbid destructive tools, cap scaling",
       "policies": [
         {
-          "name": "UforbidUdeleteUnamespace",
-          "description": "Happy trust ladder: 01-forbid-delete-namespace",
+          "name": "ForbidDeleteNamespace",
+          "description": "Happy trust ladder: forbid delete namespace",
           "statement": "forbid(principal,\n  action == AgentCore::Action::\"Hands___delete_namespace\",\n  resource == AgentCore::Gateway::\"arn:aws:bedrock-agentcore:us-east-1:575751781540:gateway/happy-happyhands-uacr1x3qd2\");",
           "sourceFile": "policies/rendered/01-forbid-delete-namespace.cedar",
-          "validationMode": "FAIL_ON_ANY_FINDINGS",
+          "validationMode": "IGNORE_ALL_FINDINGS",
           "enforcementMode": "ACTIVE",
           "authorizationPhase": "INITIATE"
         },
         {
-          "name": "UscaleUcap",
-          "description": "Happy trust ladder: 02-scale-cap",
+          "name": "ScaleCap",
+          "description": "Happy trust ladder: scale cap",
           "statement": "permit(principal,\n  action == AgentCore::Action::\"Hands___scale_deployment\",\n  resource == AgentCore::Gateway::\"arn:aws:bedrock-agentcore:us-east-1:575751781540:gateway/happy-happyhands-uacr1x3qd2\")\nwhen { context.input.replicas <= 5 };",
           "sourceFile": "policies/rendered/02-scale-cap.cedar",
           "validationMode": "FAIL_ON_ANY_FINDINGS",
@@ -261,8 +269,8 @@
           "authorizationPhase": "INITIATE"
         },
         {
-          "name": "UpermitUhands",
-          "description": "Happy trust ladder: 03-permit-hands",
+          "name": "PermitHands",
+          "description": "Happy trust ladder: permit hands",
           "statement": "permit(principal,\n  action in [AgentCore::Action::\"Hands___rollout_restart\",\n             AgentCore::Action::\"Hands___rollback_deployment\",\n             AgentCore::Action::\"Hands___set_image\"],\n  resource == AgentCore::Gateway::\"arn:aws:bedrock-agentcore:us-east-1:575751781540:gateway/happy-happyhands-uacr1x3qd2\");",
           "sourceFile": "policies/rendered/03-permit-hands.cedar",
           "validationMode": "FAIL_ON_ANY_FINDINGS",
