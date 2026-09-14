@@ -78,7 +78,18 @@
   "knowledgeBases": [],
   "credentials": [],
   "evaluators": [],
-  "onlineEvalConfigs": [],
+  "onlineEvalConfigs": [
+    {
+      "name": "HappyQuality",
+      "agent": "happy",
+      "evaluators": [
+        "Builtin.ToolSelectionAccuracy",
+        "Builtin.Helpfulness"
+      ],
+      "samplingRate": 100,
+      "enableOnCreate": true
+    }
+  ],
   "agentCoreGateways": [
     {
       "name": "HappyHands",
