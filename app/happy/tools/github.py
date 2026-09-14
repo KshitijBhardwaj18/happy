@@ -32,7 +32,7 @@ def _github_token() -> str:
     settings = load_settings()
     if settings.github_token:
         return settings.github_token
-    if settings.use_identity:
+    if getattr(settings, "use_identity", False):
         from identity import resolve_api_key
 
         token = resolve_api_key(settings.github_credential_name)
