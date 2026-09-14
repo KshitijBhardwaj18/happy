@@ -70,7 +70,7 @@ class Settings(BaseSettings):
 
     @property
     def has_slack(self) -> bool:
-        return bool(self.slack_bot_token and self.slack_channel_id)
+        return bool(self.slack_channel_id and (self.slack_bot_token or self.use_identity))
 
     @property
     def has_memory(self) -> bool:

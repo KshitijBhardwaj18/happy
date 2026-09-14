@@ -31,7 +31,9 @@ def _client_instance() -> WebClient:
     global _client
     if _client is None:
         settings = load_settings()
-        _client = WebClient(token=settings.slack_bot_token)
+        from identity import slack_token
+
+        _client = WebClient(token=slack_token() or settings.slack_bot_token)
     return _client
 
 
