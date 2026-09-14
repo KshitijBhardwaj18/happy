@@ -1,0 +1,17 @@
+.env
+.env.*
+!.env.example
+*.pem
+kubeconfig*
+audit.jsonl
+.sessions/
+.ledger/
+__pycache__/
+*.pyc
+.venv/
+.pytest_cache/
+node_modules/
+cdk.out/
+dist/
+build/
+.DS_Store
