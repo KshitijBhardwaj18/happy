@@ -30,8 +30,8 @@ class Settings(BaseSettings):
     aws_region: str = Field(default="us-east-1", alias="AWS_REGION")
 
     # Models
-    model_orchestrator: str = Field(default="us.anthropic.claude-sonnet-5", alias="HAPPY_MODEL_ORCHESTRATOR")
-    model_specialist: str = Field(default="us.anthropic.claude-haiku-4-5-20251001-v1:0", alias="HAPPY_MODEL_SPECIALIST")
+    model_orchestrator: str = Field(default="us.anthropic.claude-sonnet-4-6", alias="HAPPY_MODEL_ORCHESTRATOR")
+    model_specialist: str = Field(default="global.anthropic.claude-sonnet-4-5-20250929-v1:0", alias="HAPPY_MODEL_SPECIALIST")
 
     # Cluster
     kubeconfig_b64: str = Field(default="", alias="KUBECONFIG_B64")
