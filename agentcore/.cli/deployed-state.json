@@ -1,3 +1,43 @@
 {
-  "targets": {}
+  "targets": {
+    "default": {
+      "resources": {
+        "runtimes": {
+          "happy": {
+            "runtimeId": "happy_happy-erfgcqGZFu",
+            "runtimeArn": "arn:aws:bedrock-agentcore:us-east-1:575751781540:runtime/happy_happy-erfgcqGZFu",
+            "roleArn": "arn:aws:iam::575751781540:role/AgentCore-happy-default-ApplicationAgentHappyRuntim-vAJr977TVs4k"
+          }
+        },
+        "memories": {
+          "happyMemory": {
+            "memoryId": "happy_happyMemory-7p0bG3C4jW",
+            "memoryArn": "arn:aws:bedrock-agentcore:us-east-1:575751781540:memory/happy_happyMemory-7p0bG3C4jW"
+          }
+        },
+        "mcp": {
+          "gateways": {
+            "HappyHands": {
+              "gatewayId": "happy-happyhands-uacr1x3qd2",
+              "gatewayArn": "arn:aws:bedrock-agentcore:us-east-1:575751781540:gateway/happy-happyhands-uacr1x3qd2",
+              "gatewayUrl": "https://happy-happyhands-uacr1x3qd2.gateway.bedrock-agentcore.us-east-1.amazonaws.com/mcp",
+              "targets": {
+                "Hands": {
+                  "targetId": "KOT9HUQEST"
+                }
+              }
+            }
+          }
+        },
+        "policyEngines": {
+          "HappyPolicy": {
+            "policyEngineId": "happy_HappyPolicy-syh8p0jwsl",
+            "policyEngineArn": "arn:aws:bedrock-agentcore:us-east-1:575751781540:policy-engine/happy_HappyPolicy-syh8p0jwsl"
+          }
+        },
+        "stackName": "AgentCore-happy-default",
+        "deployHash": "1ee91ebcb112f9cd"
+      }
+    }
+  }
 }

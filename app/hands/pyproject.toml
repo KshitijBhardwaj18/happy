@@ -1,0 +1,13 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "happy-hands"
+version = "0.1.0"
+description = "Happy's hands: cluster write tools behind an AgentCore Gateway (stdlib + boto3)"
+requires-python = ">=3.12"
+dependencies = []
+
+[tool.hatch.build.targets.wheel]
+packages = ["."]
